@@ -188,12 +188,11 @@ function ScraperControl({ user }) {
         rounded-xl border border-slate-700/60 bg-slate-800/60 mb-3">
 
         <div>
-          <p className="text-sm font-semibold text-white">Run Scraper</p>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Scrapes all <span className="text-slate-300">due categories</span> now,
-            regardless of scheduled time. Only scrapes categories configured in{' '}
-            <code className="text-violet-300 bg-slate-700 px-1 rounded text-[10px]">urls.js</code>.
+          <p className="text-sm font-semibold text-white">
+            Scrapes all due categories now,
+            regardless of scheduled time. Only scrapes categories configured.
           </p>
+        
         </div>
 
         <div className="flex items-center gap-2">
