@@ -194,25 +194,35 @@ export default function CategoryMappingTab({ user }) {
   async function handleInternalClick(categoryName) {
     if (!selected) return; // nothing selected on left — ignore
 
-    // If this slug is already mapped to THIS internal category, do nothing
-    const existing = slugMappingMap.get(selected.key);
-    if (existing && existing.InternalCategory === categoryName) {
-      setSelected(null);
-      return;
-    }
+    // If this exact triple already exists, do nothing (already mapped here)
+    const alreadyMapped = mappings.some(
+      m => m.StoreName === selected.storeName &&
+           m.StoreSlug === selected.storeSlug &&
+           m.InternalCategory === categoryName
+    );
+    if (alreadyMapped) return;
 
     setSaving(categoryName);
     try {
       const saved = await saveCategoryMapping(categoryName, selected.storeName, selected.storeSlug);
 
-      setMappings(prev => {
-        // Remove old mapping for this slug if it existed (remap case)
-        const without = prev.filter(
-          m => !(m.StoreName === selected.storeName && m.StoreSlug === selected.storeSlug)
-        );
-        return [...without, saved];
-      });
+      // setMappings(prev => {
+      //   // Remove old mapping for this slug if it existed (remap case)
+      //   const without = prev.filter(
+      //     m => !(m.StoreName === selected.storeName && m.StoreSlug === selected.storeSlug)
+      //   );
+      //   return [...without, saved];
+      // });
+      // ADD the new mapping (many-to-many — don't remove existing ones)
+      setMappings(prev => [...prev, saved]);
 
+      // Flash the row briefly — keep pill selected so user can map more
+      setFlashId(categoryName);
+      setTimeout(() => setFlashId(null), 1200);
+      // NOTE: setSelected(null) intentionally removed — pill stays selected
+
+
+      
       // Flash the row briefly
       setFlashId(categoryName);
       setTimeout(() => setFlashId(null), 1200);
