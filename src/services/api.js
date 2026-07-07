@@ -293,3 +293,14 @@ export async function downloadScrapeRunSkuMatchesCsv(runId = 'latest') {
   );
   return response.data;
 }
+
+
+
+
+export async function pushToShopify(skuId, sp, isManual = false) {
+  const response = await axios.post(`${BASE_URL}/push-to-shopify`,
+    { skuId, sp, isManual },
+    { withCredentials: true }
+  );
+  return response.data.data;
+}

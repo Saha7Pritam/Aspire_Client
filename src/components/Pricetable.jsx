@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import StatusBadge    from './StatusBadge';
 import RefreshButton  from './RefreshButton';
 import CompetitorCell from './CompetitorCell';
+import TakeActionCell from './TakeActionCell';
 
 const fmt = (val) =>
   val != null
@@ -139,6 +140,28 @@ export default function PriceTable({ data: initialData }) {
       header: 'Comp. Stock',
       cell: (info) => <StatusBadge status={info.getValue()} />,
     },
+
+// New Push to Shopify
+
+    {
+      id    : 'takeAction',
+      header: 'Take Action',
+      cell  : (info) => {
+        const row = info.row.original;
+        return (
+          <TakeActionCell
+            skuId         = {row.SKU_ID}
+            recommendedSP = {row.RecommendedSP}
+            onPushed      = {(skuId, result) => {
+              setRows(prev => prev.map(r => r.SKU_ID === skuId ? { ...r, RecommendedSP: result.RecommendedSP } : r));
+            }}
+          />
+        );
+      },
+    },
+
+
+
     {
       id    : 'refresh',
       header: 'Refresh',
