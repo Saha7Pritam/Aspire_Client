@@ -5,6 +5,8 @@
 // Refresh columns — purely PP + business variables.
 // ─────────────────────────────────────────────────────────────
 
+import TakeActionCell from "./TakeActionCell";
+
 const fmt = (val) =>
   val != null
     ? '₹' + Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })
@@ -16,7 +18,7 @@ export default function InternalRecommendationsTable({ data }) {
       <table className="w-full text-sm border-collapse table-fixed">
         <thead>
           <tr className="bg-slate-800/80 border-b border-slate-700">
-            {['Product SKU', 'Title', 'Category', 'PP (₹)', 'Current SP (₹)', 'Recommended SP (₹)'].map(h => (
+            {['Product SKU', 'Title', 'Category', 'PP (₹)', 'Current SP (₹)', 'Recommended SP (₹)', 'Take Action'].map(h => (
               <th key={h} className="px-2 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 {h}
               </th>
@@ -65,6 +67,10 @@ export default function InternalRecommendationsTable({ data }) {
                   </div>
                 </div>
               </td>
+
+              <td className="px-2 py-3 text-center align-middle">
+  <TakeActionCell skuId={row.SKU_ID} recommendedSP={row.RecommendedSP} onPushed={() => {}} />
+</td>
             </tr>
           ))}
         </tbody>
