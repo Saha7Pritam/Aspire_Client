@@ -297,10 +297,10 @@ export async function downloadScrapeRunSkuMatchesCsv(runId = 'latest') {
 
 
 
-export async function pushToShopify(skuId, sp, isManual = false) {
+export async function pushToShopify(skuId, sp, isManual = false, confirmVariance = false) {
   const response = await axios.post(`${BASE_URL}/push-to-shopify`,
-    { skuId, sp, isManual },
+    { skuId, sp, isManual, confirmVariance },
     { withCredentials: true }
   );
-  return response.data.data;
+  return response.data;
 }
