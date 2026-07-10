@@ -57,24 +57,30 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
           >
             <h3 className="text-slate-100 font-semibold text-base mb-2">Confirm Price Change</h3>
             <p className="text-slate-300 text-sm mb-4">
-              You're about to set SKU <span className="font-mono text-slate-100">{skuId}</span> to{' '}
-              <span className="font-semibold text-slate-100">₹{varianceModal.sp}</span>
-              {varianceModal.systemSP != null ? (
-                <>
-                  , which is{' '}
-                  <span className={varianceModal.percent >= 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
-                    {varianceModal.percent >= 0 ? '+' : ''}{varianceModal.percent}%
-                  </span>{' '}
-                  from the system's recommended price of{' '}
-                  <span className="font-semibold text-slate-100">₹{varianceModal.systemSP}</span>.
-                </>
-              ) : (
-                '. No system-calculated recommendation is stored for this SKU yet — please confirm this price is correct.'
-              )}
-            </p>
-            <p className="text-amber-400 text-xs mb-5">
-              Please double check this is intentional before continuing.
-            </p>
+  {varianceModal.systemSP != null ? (
+    <>
+      New price for <span className="font-mono text-slate-100">{skuId}</span>:{' '}
+      <span className="font-semibold text-slate-100">₹{varianceModal.sp}</span>
+      <br />
+      System recommends:{' '}
+      <span className="font-semibold text-slate-100">₹{varianceModal.systemSP}</span>
+      <br />
+      That's{' '}
+      <span className={varianceModal.percent >= 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
+        {varianceModal.percent >= 0 ? '+' : ''}{varianceModal.percent}%
+      </span>{' '}
+      {varianceModal.percent >= 0 ? 'higher' : 'lower'} than recommended. Are you sure?
+    </>
+  ) : (
+    <>
+      No system recommendation is saved yet for{' '}
+      <span className="font-mono text-slate-100">{skuId}</span>.
+      <br />
+      You're about to push{' '}
+      <span className="font-semibold text-slate-100">₹{varianceModal.sp}</span>. Please confirm this is correct.
+    </>
+  )}
+</p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setVarianceModal(null)}
