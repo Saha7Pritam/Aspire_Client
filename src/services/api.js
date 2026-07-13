@@ -304,3 +304,19 @@ export async function pushToShopify(skuId, sp, isManual = false, confirmVariance
   );
   return response.data;
 }
+
+
+
+export async function fetchAppSetting(key) {
+  const response = await axios.get(`${BASE_URL}/app-settings/${key}`, { withCredentials: true });
+  return response.data.data;
+}
+
+export async function updateAppSetting(key, value) {
+  const response = await axios.put(
+    `${BASE_URL}/app-settings/${key}`,
+    { value },
+    { withCredentials: true }
+  );
+  return response.data.data;
+}
