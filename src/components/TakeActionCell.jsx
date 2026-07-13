@@ -15,14 +15,17 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState('');
   const [varianceModal, setVarianceModal] = useState(null); // { sp, isManual, systemSP, percent }
+  const [confirmLoading, setConfirmLoading] = useState(false); // loading state while modal's own request is in flight
 
   async function doPush(sp, isManual, confirmVariance = false) {
     setStatus(STATUS.LOADING);
     setError('');
+    if (varianceModal) setConfirmLoading(true);
     try {
       const result = await pushToShopify(skuId, sp, isManual, confirmVariance);
       setStatus(STATUS.SUCCESS);
       setVarianceModal(null);
+      setConfirmLoading(false);
       if (onPushed) onPushed(skuId, result);
       setTimeout(() => setStatus(STATUS.IDLE), 3000);
     } catch (err) {
@@ -33,66 +36,76 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
           ? (((sp - data.systemSP) / data.systemSP) * 100).toFixed(1)
           : null;
         setVarianceModal({ sp, isManual, systemSP: data.systemSP, percent });
-        setStatus(STATUS.IDLE); // buttons behind the modal go back to normal
+        setConfirmLoading(false);
+        setStatus(STATUS.IDLE);
         return;
       }
 
+      setConfirmLoading(false);
       setStatus(STATUS.ERROR);
       setError(data?.error || err.message || 'Push failed');
       setTimeout(() => { setStatus(STATUS.IDLE); setError(''); }, 4000);
     }
   }
 
+  const isBusy = status === STATUS.LOADING;
+
   return (
     <>
       {/* ── Variance confirmation modal ─────────────────────────── */}
       {varianceModal && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-          onClick={() => setVarianceModal(null)}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
+          // No onClick here — clicking the backdrop no longer dismisses the modal.
+          // Only Cancel or Save & Continue can close it now.
         >
-          <div
-            className="bg-slate-800 border border-slate-600 rounded-lg p-6 w-[380px] shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="bg-slate-800 border border-slate-600 rounded-lg p-6 w-[380px] shadow-xl">
             <h3 className="text-slate-100 font-semibold text-base mb-2">Confirm Price Change</h3>
             <p className="text-slate-300 text-sm mb-4">
-  {varianceModal.systemSP != null ? (
-    <>
-      New price for <span className="font-mono text-slate-100">{skuId}</span>:{' '}
-      <span className="font-semibold text-slate-100">₹{varianceModal.sp}</span>
-      <br />
-      System recommends:{' '}
-      <span className="font-semibold text-slate-100">₹{varianceModal.systemSP}</span>
-      <br />
-      That's{' '}
-      <span className={varianceModal.percent >= 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
-        {varianceModal.percent >= 0 ? '+' : ''}{varianceModal.percent}%
-      </span>{' '}
-      {varianceModal.percent >= 0 ? 'higher' : 'lower'} than recommended. Are you sure?
-    </>
-  ) : (
-    <>
-      No system recommendation is saved yet for{' '}
-      <span className="font-mono text-slate-100">{skuId}</span>.
-      <br />
-      You're about to push{' '}
-      <span className="font-semibold text-slate-100">₹{varianceModal.sp}</span>. Please confirm this is correct.
-    </>
-  )}
-</p>
+              {varianceModal.systemSP != null ? (
+                <>
+                  New price for <span className="font-mono text-slate-100">{skuId}</span>:{' '}
+                  <span className="font-semibold text-slate-100">₹{varianceModal.sp}</span>
+                  <br />
+                  System recommends:{' '}
+                  <span className="font-semibold text-slate-100">₹{varianceModal.systemSP}</span>
+                  <br />
+                  That's{' '}
+                  <span className={varianceModal.percent >= 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
+                    {varianceModal.percent >= 0 ? '+' : ''}{varianceModal.percent}%
+                  </span>{' '}
+                  {varianceModal.percent >= 0 ? 'higher' : 'lower'} than recommended. Are you sure?
+                </>
+              ) : (
+                <>
+                  No system recommendation is saved yet for{' '}
+                  <span className="font-mono text-slate-100">{skuId}</span>.
+                  <br />
+                  You're about to push{' '}
+                  <span className="font-semibold text-slate-100">₹{varianceModal.sp}</span>. Please confirm this is correct.
+                </>
+              )}
+            </p>
+            <p className="text-amber-400 text-xs mb-5">
+              Please double check this is intentional before continuing.
+            </p>
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setVarianceModal(null)}
-                className="px-3 py-1.5 text-sm rounded bg-slate-700 hover:bg-slate-600 text-slate-300"
+                onClick={() => !confirmLoading && setVarianceModal(null)}
+                disabled={confirmLoading}
+                className="px-3 py-1.5 text-sm rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-300"
               >
                 Cancel
               </button>
               <button
                 onClick={() => doPush(varianceModal.sp, varianceModal.isManual, true)}
-                className="px-3 py-1.5 text-sm rounded bg-amber-600 hover:bg-amber-500 text-white font-medium"
+                disabled={confirmLoading}
+                className="px-3 py-1.5 text-sm rounded bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-medium flex items-center gap-2"
               >
-                Save &amp; Continue
+                {confirmLoading && (
+                  <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                )}
+                {confirmLoading ? 'Pushing...' : 'Save & Continue'}
               </button>
             </div>
           </div>
@@ -107,7 +120,8 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="New SP"
-            className="w-24 px-2 py-1 text-xs rounded bg-slate-800 border border-slate-600 text-slate-200 text-center"
+            disabled={isBusy}
+            className="w-24 px-2 py-1 text-xs rounded bg-slate-800 border border-slate-600 text-slate-200 text-center disabled:opacity-50"
             autoFocus
           />
           <div className="flex gap-1.5">
@@ -117,13 +131,16 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
                 if (isNaN(val) || val <= 0) { setError('Enter a valid number'); return; }
                 doPush(val, true);
               }}
-              className="px-2 py-0.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white"
+              disabled={isBusy}
+              className="px-2 py-0.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white flex items-center gap-1.5"
             >
-              Save
+              {isBusy && <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+              {isBusy ? 'Saving...' : 'Save'}
             </button>
             <button
               onClick={() => { setStatus(STATUS.IDLE); setInputValue(''); setError(''); }}
-              className="px-2 py-0.5 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-300"
+              disabled={isBusy}
+              className="px-2 py-0.5 text-xs rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-300"
             >
               Cancel
             </button>
@@ -135,14 +152,15 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
           <div className="flex flex-col gap-1.5">
             <button
               onClick={() => doPush(recommendedSP, false)}
-              disabled={status === STATUS.LOADING}
-              className="px-2 py-1 text-xs rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white"
+              disabled={isBusy}
+              className="px-2 py-1 text-xs rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white flex items-center justify-center gap-1.5"
             >
-              {status === STATUS.LOADING ? '...' : 'Push'}
+              {isBusy && <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+              {isBusy ? 'Pushing...' : 'Push'}
             </button>
             <button
               onClick={() => setStatus(STATUS.EDITING)}
-              disabled={status === STATUS.LOADING}
+              disabled={isBusy}
               className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-300"
             >
               Modify &amp; Push
