@@ -17,7 +17,46 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
   const [varianceModal, setVarianceModal] = useState(null); // { sp, isManual, systemSP, percent }
   const [confirmLoading, setConfirmLoading] = useState(false); // loading state while modal's own request is in flight
 
+  // async function doPush(sp, isManual, confirmVariance = false) {
+  //   setStatus(STATUS.LOADING);
+  //   setError('');
+  //   if (varianceModal) setConfirmLoading(true);
+  //   try {
+  //     const result = await pushToShopify(skuId, sp, isManual, confirmVariance);
+  //     setStatus(STATUS.SUCCESS);
+  //     setVarianceModal(null);
+  //     setConfirmLoading(false);
+  //     if (onPushed) onPushed(skuId, result);
+  //     setTimeout(() => setStatus(STATUS.IDLE), 3000);
+  //   } catch (err) {
+  //     const data = err?.response?.data;
+
+  //     if (data?.error === 'variance_check_failed') {
+  //       const percent = data.systemSP > 0
+  //         ? (((sp - data.systemSP) / data.systemSP) * 100).toFixed(1)
+  //         : null;
+  //       setVarianceModal({ sp, isManual, systemSP: data.systemSP, percent });
+  //       setConfirmLoading(false);
+  //       setStatus(STATUS.IDLE);
+  //       return;
+  //     }
+
+  //     setConfirmLoading(false);
+  //     setStatus(STATUS.ERROR);
+  //     setError(data?.error || err.message || 'Push failed');
+  //     setTimeout(() => { setStatus(STATUS.IDLE); setError(''); }, 4000);
+  //   }
+  // }
+
+
+
   async function doPush(sp, isManual, confirmVariance = false) {
+    if (!skuId || sp == null || isNaN(parseFloat(sp))) {
+      setStatus(STATUS.ERROR);
+      setError('Missing price data — please refresh the page and try again');
+      setTimeout(() => { setStatus(STATUS.IDLE); setError(''); }, 4000);
+      return; // never let a bad call reach the network
+    }
     setStatus(STATUS.LOADING);
     setError('');
     if (varianceModal) setConfirmLoading(true);
@@ -47,6 +86,8 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
       setTimeout(() => { setStatus(STATUS.IDLE); setError(''); }, 4000);
     }
   }
+
+  
 
   const isBusy = status === STATUS.LOADING;
 
