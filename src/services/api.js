@@ -331,3 +331,14 @@ export async function syncCategoryFlags(category) {
   );
   return response.data.data;
 }
+
+
+
+
+export async function fetchScrapeRunSkuMatches(runId = 'latest') {
+  const response = await axios.get(
+    `${BASE_URL}/scrape-stats/${encodeURIComponent(runId)}/sku-matches`,
+    { withCredentials: true }
+  );
+  return response.data.data; // { runId, rows }
+}
