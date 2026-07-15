@@ -10,7 +10,6 @@ import BulkPPUpdateView from "./components/BulkPPUpdateView";
 import {
   fetchRecommendations,
   fetchInternalRecommendations,
-  syncCategoryFlags,
   checkAuth,
   logout,
 } from "./services/api";
@@ -132,27 +131,10 @@ export default function App() {
     else loadData();
   }
 
-  // ── Category filter now syncs isActive/isInStock for that
-  // category before reloading, so products with stale flags
-  // (previously excluded from /api/recommendations) show up. ──
-  const [categorySyncing, setCategorySyncing] = useState(false);
-
-  async function handleCategoryChange(category) {
-    setSelectedCategory(category);
-    if (!category) return; // "All Categories" — nothing to sync
-
-    setCategorySyncing(true);
-    try {
-      await syncCategoryFlags(category);
-      if (showInternalView) await loadInternalData();
-      else await loadData();
-    } catch (err) {
-      console.error("Category sync failed:", err.message);
-      // Non-fatal — table still shows whatever was already loaded
-    } finally {
-      setCategorySyncing(false);
-    }
-  }
+  
+  function handleCategoryChange(category) {
+  setSelectedCategory(category);
+}
  
   const categories = useMemo(() => {
     const source = showInternalView ? internalData : data;
@@ -682,9 +664,6 @@ export default function App() {
                   value={selectedCategory}
                   onChange={handleCategoryChange}
                 />
-                {categorySyncing && (
-                  <span className="text-xs text-slate-500 animate-pulse">Syncing…</span>
-                )}
  
                 {/* ── Internal Products RecommendedSP toggle ── */}
                 <button

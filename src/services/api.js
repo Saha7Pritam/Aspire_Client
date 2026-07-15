@@ -323,16 +323,6 @@ export async function updateAppSetting(key, value) {
 
 
 
-// ── Sync isActive/isInStock for one category from the live Shopify view ──
-export async function syncCategoryFlags(category) {
-  const response = await axios.post(`${BASE_URL}/sync-category`,
-    { category },
-    { withCredentials: true }
-  );
-  return response.data.data;
-}
-
-
 
 
 export async function fetchScrapeRunSkuMatches(runId = 'latest') {
