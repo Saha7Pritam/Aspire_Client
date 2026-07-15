@@ -1,6 +1,7 @@
 // src/components/TakeActionCell.jsx
 import { useState } from 'react';
 import { pushToShopify } from '../services/api';
+import { usePushLock } from '../context/PushLockContext';
 
 const STATUS = {
   IDLE: 'idle',
@@ -11,44 +12,12 @@ const STATUS = {
 };
 
 export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
+  const { activeSkuId, acquireLock, releaseLock } = usePushLock();
   const [status, setStatus] = useState(STATUS.IDLE);
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState('');
   const [varianceModal, setVarianceModal] = useState(null); // { sp, isManual, systemSP, percent }
   const [confirmLoading, setConfirmLoading] = useState(false); // loading state while modal's own request is in flight
-
-  // async function doPush(sp, isManual, confirmVariance = false) {
-  //   setStatus(STATUS.LOADING);
-  //   setError('');
-  //   if (varianceModal) setConfirmLoading(true);
-  //   try {
-  //     const result = await pushToShopify(skuId, sp, isManual, confirmVariance);
-  //     setStatus(STATUS.SUCCESS);
-  //     setVarianceModal(null);
-  //     setConfirmLoading(false);
-  //     if (onPushed) onPushed(skuId, result);
-  //     setTimeout(() => setStatus(STATUS.IDLE), 3000);
-  //   } catch (err) {
-  //     const data = err?.response?.data;
-
-  //     if (data?.error === 'variance_check_failed') {
-  //       const percent = data.systemSP > 0
-  //         ? (((sp - data.systemSP) / data.systemSP) * 100).toFixed(1)
-  //         : null;
-  //       setVarianceModal({ sp, isManual, systemSP: data.systemSP, percent });
-  //       setConfirmLoading(false);
-  //       setStatus(STATUS.IDLE);
-  //       return;
-  //     }
-
-  //     setConfirmLoading(false);
-  //     setStatus(STATUS.ERROR);
-  //     setError(data?.error || err.message || 'Push failed');
-  //     setTimeout(() => { setStatus(STATUS.IDLE); setError(''); }, 4000);
-  //   }
-  // }
-
-
 
   async function doPush(sp, isManual, confirmVariance = false) {
     if (!skuId || sp == null || isNaN(parseFloat(sp))) {
@@ -57,6 +26,11 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
       setTimeout(() => { setStatus(STATUS.IDLE); setError(''); }, 4000);
       return; // never let a bad call reach the network
     }
+
+    // Guard: refuse to start if another row already owns the lock
+    if (activeSkuId && activeSkuId !== skuId) return;
+
+    acquireLock(skuId); // claim the lock for this row
     setStatus(STATUS.LOADING);
     setError('');
     if (varianceModal) setConfirmLoading(true);
@@ -65,6 +39,7 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
       setStatus(STATUS.SUCCESS);
       setVarianceModal(null);
       setConfirmLoading(false);
+      releaseLock(skuId); // done — free the lock
       if (onPushed) onPushed(skuId, result);
       setTimeout(() => setStatus(STATUS.IDLE), 3000);
     } catch (err) {
@@ -77,19 +52,22 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
         setVarianceModal({ sp, isManual, systemSP: data.systemSP, percent });
         setConfirmLoading(false);
         setStatus(STATUS.IDLE);
+        // NOTE: lock stays held here — the operation isn't finished,
+        // it's just waiting on the confirmation modal
         return;
       }
 
       setConfirmLoading(false);
       setStatus(STATUS.ERROR);
+      releaseLock(skuId); // free the lock on real failure
       setError(data?.error || err.message || 'Push failed');
       setTimeout(() => { setStatus(STATUS.IDLE); setError(''); }, 4000);
     }
   }
 
-  
-
   const isBusy = status === STATUS.LOADING;
+  const isLockedByOther = activeSkuId != null && activeSkuId !== skuId;
+  const controlsDisabled = isBusy || isLockedByOther;
 
   return (
     <>
@@ -132,7 +110,12 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
             </p>
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => !confirmLoading && setVarianceModal(null)}
+                onClick={() => {
+                  if (!confirmLoading) {
+                    releaseLock(skuId); // release when user cancels the confirm modal
+                    setVarianceModal(null);
+                  }
+                }}
                 disabled={confirmLoading}
                 className="px-3 py-1.5 text-sm rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-300"
               >
@@ -161,7 +144,7 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="New SP"
-            disabled={isBusy}
+            disabled={controlsDisabled}
             className="w-24 px-2 py-1 text-xs rounded bg-slate-800 border border-slate-600 text-slate-200 text-center disabled:opacity-50"
             autoFocus
           />
@@ -172,7 +155,7 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
                 if (isNaN(val) || val <= 0) { setError('Enter a valid number'); return; }
                 doPush(val, true);
               }}
-              disabled={isBusy}
+              disabled={controlsDisabled}
               className="px-2 py-0.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white flex items-center gap-1.5"
             >
               {isBusy && <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
@@ -180,7 +163,7 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
             </button>
             <button
               onClick={() => { setStatus(STATUS.IDLE); setInputValue(''); setError(''); }}
-              disabled={isBusy}
+              disabled={controlsDisabled}
               className="px-2 py-0.5 text-xs rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-300"
             >
               Cancel
@@ -193,7 +176,7 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
           <div className="flex flex-col gap-1.5">
             <button
               onClick={() => doPush(recommendedSP, false)}
-              disabled={isBusy}
+              disabled={controlsDisabled}
               className="px-2 py-1 text-xs rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white flex items-center justify-center gap-1.5"
             >
               {isBusy && <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
@@ -201,7 +184,7 @@ export default function TakeActionCell({ skuId, recommendedSP, onPushed }) {
             </button>
             <button
               onClick={() => setStatus(STATUS.EDITING)}
-              disabled={isBusy}
+              disabled={controlsDisabled}
               className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-300"
             >
               Modify &amp; Push
